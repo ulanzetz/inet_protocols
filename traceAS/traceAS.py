@@ -14,6 +14,7 @@ PRIVATE_NETWORKS = {
 	('127.0.0.0', '127.255.255.255')
 }
 
+
 def main():
 	parser = ArgumentParser(description='Simple trace AS route utility')
 	parser.add_argument('destination', type = str, help='Destination hostname')
@@ -27,16 +28,21 @@ def traceroute(destination, hops):
 	current_address = None
 	ttl = 1
 	sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
+	sock.settimeout(5)
 	while ttl != hops and current_address != destination:
 		sock.setsockopt(socket.SOL_IP, socket.IP_TTL, ttl)
 		sock.sendto(ECHO_REQUEST, (destination, 1))
-		packet, ipPort = sock.recvfrom(1024)
-		current_address = ipPort[0]
-		message = current_address
-		if is_public(current_address):
-			message += get_location(current_address)
-		yield message
-		ttl += 1
+		try:
+			packet, ipPort = sock.recvfrom(1024)
+			current_address = ipPort[0]
+			message = current_address
+			if is_public(current_address):
+				message += get_location(current_address)
+			yield message
+			ttl += 1
+		except socket.timeout:
+			yield '*****'
+			return
 	sock.close()
 
 def ip2long(ip):
@@ -50,8 +56,8 @@ def is_public(ip):
 	return True
 
 def get_location(ip):
-	 info = loads(urlopen('http://ipinfo.io/%s/json' % ip).read())
-	 return ' %s %s %s' % (info['country'], info['region'], info['city'])
+	info = loads(urlopen('http://ipinfo.io/%s/json' % ip).read())
+	return ' %s %s %s' % (info['country'], info['region'], info['city'])
 
 if __name__ == '__main__':
 	main()
