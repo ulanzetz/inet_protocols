@@ -57,7 +57,10 @@ def is_public(ip):
 
 def get_location(ip):
 	info = loads(urlopen('http://ipinfo.io/%s/json' % ip).read())
-	return ' %s %s %s' % (info['country'], info['region'], info['city'])
+	message =  ' %s %s %s' % (info['country'], info['region'], info['city'])
+	if 'org' in info:
+		message += ' %s' % info['org']
+	return message
 
 if __name__ == '__main__':
 	main()
