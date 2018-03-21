@@ -19,30 +19,30 @@ def main():
     parser = ArgumentParser(description='Simple trace AS route utility')
     parser.add_argument('destination', type = str, help='Destination hostname')
     parser.add_argument('-hops', default = 30, type = int, help = 'Maximum number of hops')
+    parser.add_argument('-timeout', default = 10, type = int, help = 'Timeout of response in seconds')
     args = parser.parse_args()
-    for message in traceroute(args.destination, args.hops):
+    for message in traceroute(args.destination, args.hops, args.timeout):
         print(message)
 
-def traceroute(destination, hops):
+def traceroute(destination, hops, timeout):
     destination = socket.gethostbyname(destination)
     current_address = None
     ttl = 1
     sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
-    sock.settimeout(5)
+    sock.settimeout(timeout)
     while ttl != hops and current_address != destination:
         sock.setsockopt(socket.SOL_IP, socket.IP_TTL, ttl)
         sock.sendto(ECHO_REQUEST, (destination, 1))
         try:
             packet, ipPort = sock.recvfrom(1024)
             current_address = ipPort[0]
-            message = current_address
+            message = '%d %s' % (ttl, current_address)
             if is_public(current_address):
                 message += get_location(current_address)
             yield message
-            ttl += 1
         except socket.timeout:
             yield '*****'
-            return
+        ttl += 1
     sock.close()
 
 def ip2long(ip):
