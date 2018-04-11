@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/	env python3
 
 import socket
 from multiprocessing import Pool
@@ -10,7 +10,7 @@ def main():
     parser = ArgumentParser(description='UDP and TCP ports scanner')
     parser.add_argument('destination', type=str, help='Destination IPv4 or name')
     parser.add_argument('-s', '--start_port', default=1, type=int, help='Start port to scan')
-    parser.add_argument('-e', '--end_port', default=100, type=int, help='End port to scan')
+    parser.add_argument('-e', '--end_port', default=150, type=int, help='End port to scan')
     parser.add_argument('-t', '--timeout', default=100, type=int, help='Timeout of response in milliseconds')
     parser.add_argument('-tcp', action='store_true', help='Scan TCP ports')
     parser.add_argument('-udp', action='store_true', help='Scan UDP ports')
@@ -43,7 +43,7 @@ class PortScanner:
 
     TCP_PACKETS = {
         'HTTP': b'\0',
-        'SMTP': b'\0',
+        'SMTP': b'EHLO',
         'DNS': DNS_PACKET,
         'POP3': b'AUTH'
     }
