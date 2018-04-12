@@ -14,8 +14,14 @@ class DNSServer:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.bind(('', self.port))
             while True:
-                data, address = s.recvfrom(1024)
-                s.sendto(self.make_answer(data), address)
+                try:
+                    data, address = s.recvfrom(1024)
+                    s.sendto(self.make_answer(data), address)
+                except KeyboardInterrupt:
+                    print('Closing server')
+                    return
+                except:
+                    continue
 
     def make_answer(self, bytes):
         msg = DNSMessage.parse_message(bytes)
@@ -86,7 +92,7 @@ class DNSQuery:
         return hash(self.url) ** hash(self.q_type) ** hash(self.q_class)
 
     def __eq__(x, y):
-    	return x.url == y.url and x.q_type == y.q_type and x.q_class == y.q_class
+        return x.url == y.url and x.q_type == y.q_type and x.q_class == y.q_class
 
     @staticmethod
     def __parse_url(bytes, offset, recursive = False):
@@ -133,3 +139,4 @@ def parse_long(bytes, offset):
 
 if __name__ == '__main__':
     DNSServer(53, ('8.8.8.8', 53)).start()
+    
