@@ -3,24 +3,27 @@
 import struct
 import socket
 import time
+import pickle
 
 class DNSServer:
 
-    def __init__(self, port, forwarder):
+    def __init__(self, port, forwarder, cache_file):
         self.port = port
         self.forwarder = forwarder
-        self.cache = {}
+        self.cache_file = cache_file
+        with open(self.cache_file, 'rb') as f:
+            self.cache = pickle.load(f)
 
     def start(self):
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.bind(('', self.port))
+            s.settimeout(1)
             while True:
                 try:
                     data, address = s.recvfrom(1024)
                     s.sendto(self.__make_answer(data), address)
-                except KeyboardInterrupt:
-                    print('Closing server')
-                    return
+                except socket.timeout:
+                	continue
                 except Exception as e:
                     print(e)
                     continue
@@ -41,13 +44,17 @@ class DNSServer:
         return msg.to_bytes()
 
     def __ask_forwarder(self, bytes):
-    	with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.settimeout(1)
             s.connect(self.forwarder)
             s.send(bytes)
             data = s.recv(1024)
             self.cache.update(DNSMessage.parse_message(data).answers)
             return data
+
+    def save_cahce(self):
+        with open(self.cache_file, 'wb') as f:
+            pickle.dump(self.cache, f)
 
 class DNSMessage:
 
@@ -150,4 +157,8 @@ def parse_long(bytes, offset):
     return (struct.unpack_from('!I', bytes, offset)[0], offset + 4)
 
 if __name__ == '__main__':
-    DNSServer(53, ('8.8.8.8', 53)).start()
+    server = DNSServer(53, ('8.8.8.8', 53), 'cache')
+    try:
+        server.start()
+    except KeyboardInterrupt:
+        server.save_cahce()
