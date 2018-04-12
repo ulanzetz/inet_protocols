@@ -2,6 +2,7 @@
 
 import struct
 import socket
+import time
 
 class DNSServer:
 
@@ -16,7 +17,7 @@ class DNSServer:
             while True:
                 try:
                     data, address = s.recvfrom(1024)
-                    s.sendto(self.make_answer(data), address)
+                    s.sendto(self.__make_answer(data), address)
                 except KeyboardInterrupt:
                     print('Closing server')
                     return
@@ -24,17 +25,11 @@ class DNSServer:
                     print(e)
                     continue
 
-    def make_answer(self, bytes):
+    def __make_answer(self, bytes):
         msg = DNSMessage.parse_message(bytes)
         for question in msg.questions:
-            if not question in self.cache:
-                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-                    s.settimeout(1)
-                    s.connect(self.forwarder)
-                    s.send(bytes)
-                    data = s.recv(1024)
-                    self.cache.update(DNSMessage.parse_message(data).answers)
-                    return data
+            if not question in self.cache or self.cache[question].exp_time < int(time.time()):
+               return self.__ask_forwarder(bytes)
             if question.q_type == 6:
                 msg.authority[question] = self.cache[question]
                 msg.authority_RR += 1
@@ -44,6 +39,15 @@ class DNSServer:
             print('From cache')
         msg.flags = 0x8580
         return msg.to_bytes()
+
+    def __ask_forwarder(self, bytes):
+    	with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.settimeout(1)
+            s.connect(self.forwarder)
+            s.send(bytes)
+            data = s.recv(1024)
+            self.cache.update(DNSMessage.parse_message(data).answers)
+            return data
 
 class DNSMessage:
 
@@ -130,13 +134,14 @@ class DNSRecord:
     @staticmethod
     def parse_record(bytes, offset):
         record = DNSRecord()
-        record.ttl, offset = parse_long(bytes, offset)
+        ttl, offset = parse_long(bytes, offset)
+        record.exp_time = int(time.time()) + ttl
         length, offset = parse_short(bytes, offset)
         record.info = bytes[offset : offset + length]
         return(record, offset + length)
 
     def to_bytes(self):
-        return struct.pack('!IH', self.ttl, len(self.info)) + self.info
+        return struct.pack('!IH', self.exp_time - int(time.time()), len(self.info)) + self.info
 
 def parse_short(bytes, offset):
     return (struct.unpack_from('!H', bytes, offset)[0], offset + 2)
