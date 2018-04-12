@@ -20,7 +20,8 @@ class DNSServer:
                 except KeyboardInterrupt:
                     print('Closing server')
                     return
-                except:
+                except Exception as e:
+                    print(e)
                     continue
 
     def make_answer(self, bytes):
@@ -28,15 +29,20 @@ class DNSServer:
         for question in msg.questions:
             if not question in self.cache:
                 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                    s.settimeout(1)
                     s.connect(self.forwarder)
                     s.send(bytes)
                     data = s.recv(1024)
                     self.cache.update(DNSMessage.parse_message(data).answers)
                     return data
-            msg.answers[question] = self.cache[question]
+            if question.q_type == 6:
+                msg.authority[question] = self.cache[question]
+                msg.authority_RR += 1
+            else:
+                msg.answers[question] = self.cache[question]
+                msg.answers_RR += 1
             print('From cache')
         msg.flags = 0x8580
-        msg.answers_RR = len(msg.answers)
         return msg.to_bytes()
 
 class DNSMessage:
@@ -49,6 +55,7 @@ class DNSMessage:
         ) = struct.unpack_from('!HHHHHH', bytes, 0)
         msg.questions = []
         msg.answers = {}
+        msg.authority = {}
         offset = 12
         for i in range(msg.questions_RR):
             query, offset = DNSQuery.parse_query(bytes, offset)
@@ -70,9 +77,9 @@ class DNSMessage:
             )
         for question in self.questions:
             bytes += question.to_bytes()
-        for question, answers in self.answers.items():
+        for question, answer in self.answers.items() | self.authority.items():
             bytes += question.to_bytes()
-            bytes += answers.to_bytes()
+            bytes += answer.to_bytes()
         return bytes
 
 class DNSQuery:
@@ -139,4 +146,3 @@ def parse_long(bytes, offset):
 
 if __name__ == '__main__':
     DNSServer(53, ('8.8.8.8', 53)).start()
-    
