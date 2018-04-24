@@ -1,2 +1,9 @@
 Some text, including
 	multilining, tabs non-ascii-cha®s and кирриллицу и е
+
+.
+test dots in start of line.
+...
+.
+...
+....

@@ -15,6 +15,8 @@ account = parser['Account']
 with open(msg['Text'], 'r', encoding='utf-8') as f:
     text = f.read()
 
+text = text.replace('\n.', '\n..')
+
 attachments = ''
 
 boundary = msg['Boundary']
