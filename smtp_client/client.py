@@ -15,6 +15,9 @@ account = parser['Account']
 with open(msg['Text'], 'r', encoding='utf-8') as f:
     text = f.read()
 
+if text[0] == '.':
+	text = '.' + text
+
 text = text.replace('\n.', '\n..')
 
 attachments = ''
