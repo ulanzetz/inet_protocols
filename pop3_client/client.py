@@ -92,8 +92,14 @@ class POP3Client:
                     out_filenames.add(out_filename)
                 else:
                     return 'Unsupportable encoding'
-        return 'Your message was saved in\n' + '\n'.join(out_filenames)
+            return 'Your message was saved in\n' + '\n'.join(out_filenames)
+        else:
+            return msg_body.decode()
 
+    def top(self, lines_count):
+        return b''.join(
+            self.__recv_cmd_chunks(f'TOP {self.msg_id} {lines_count}', self.__headers_len)
+            ).decode()
 
     def __get_headers_gen(self):
         current_header = None
